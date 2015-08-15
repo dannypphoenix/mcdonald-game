@@ -24,7 +24,7 @@ def main(leveltoplay=1):
     bg.convert()
     bg.fill(pygame.Color("#000000"))
     entities = pygame.sprite.Group()
-    player = Player(32, 32); player.health = -1
+    player = Player(32, 32); #player.health = -1
     playerstartL = playerstartT = 32
     platforms = []
     enemies = []
