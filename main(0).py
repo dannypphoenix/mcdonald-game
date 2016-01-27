@@ -24,7 +24,7 @@ def main(leveltoplay=1):
     bg.convert()
     bg.fill(pygame.Color("#000000"))
     entities = pygame.sprite.Group()
-    player = Player(32, 32); #player.health = -1
+    player = Player(32, 32); player.health = -1
     playerstartL = playerstartT = 32
     platforms = []
     enemies = []
@@ -165,7 +165,7 @@ def main(leveltoplay=1):
             b.targets = gunners
             bombers.append(b)
 
-        for i in range(0):
+        for i in range(1):
             g = MachineGunDrone((i+9)*32, 6*32)
             #g.targets.append(player)
             #g.health = 1000
@@ -179,7 +179,7 @@ def main(leveltoplay=1):
 
     
     elif leveltoplay == 7:
-        lazer_types = (super_lazer,)
+        pass
 
     total_level_width  = len(level[0])*32
     total_level_height = len(level)*32
@@ -211,11 +211,9 @@ def main(leveltoplay=1):
 
                 if paused:
                     paused = False
-                    print('not paused')
-                    #break
+                    break
                 elif not paused:
                     paused = True
-                    print('paused')
                     
             if e.type == pygame.KEYDOWN:
 
@@ -266,13 +264,6 @@ def main(leveltoplay=1):
 ##                if e.key == pygame.K_s:
 ##                    player.xvel = player.yvel = 0
 
-                if e.key == pygame.K_y:
-                    b = bomb_lazer(player.rect.left, player.rect.top)
-                    entities.add(b)
-                    b.shooter = player
-                    b.explosionradius = 64
-                    b.destroyblocks = True
-
             if e.type == pygame.KEYUP:
 
                 if e.key == pygame.K_w:
@@ -315,8 +306,7 @@ def main(leveltoplay=1):
         if paused:
 
             for e in entities:
-                if camera.onscreen(e):
-                    screen.blit(e.image, camera.apply(e))
+                screen.blit(e.image, camera.apply(e))
 
             pygame.display.flip()
         
@@ -337,12 +327,10 @@ def main(leveltoplay=1):
         Master_Lazer.update(entities)
 
         for e in entities:
-            if camera.onscreen(e):
-                screen.blit(e.image, camera.apply(e))
+            screen.blit(e.image, camera.apply(e))
 
         for h in healthbars:
-            if camera.onscreen(h):
-                screen.blit(h.image, camera.apply(h))
+            screen.blit(h.image, camera.apply(h))
         
         current_enemy = 0
         while current_enemy < len(enemies):
@@ -434,23 +422,10 @@ class Camera(object):
     def update(self, target):
         self.state = self.camera_func(self.state, target.rect)
 
-    def onscreen(self, target):
-        sl = self.state.left
-        st = self.state.top
-        sw = self.state.width
-        sh = self.state.height
-        self.rect = pygame.Rect(-sl, -st, sw, sh)
-        if pygame.sprite.collide_rect(self, target):
-            return True
-        else:
-            #print('return False')
-            return False
-
 def simple_camera(camera, target_rect):
     l, t, _, _ = target_rect
     _, _, w, h = camera
     return pygame.Rect(-l+HALF_WIDTH, -t+HALF_HEIGHT, w, h)
-    #return pygame.Rect(-l+HALF_WIDTH, -t+HALF_HEIGHT, w, h)
 
 def complex_camera(camera, target_rect):
     l, t, _, _ = target_rect
@@ -466,7 +441,7 @@ def complex_camera(camera, target_rect):
 
 
 if __name__ == '__main__':
-    currentnum = 0
+    currentnum = 6
     while 1:
         won = main(currentnum)
         if won:

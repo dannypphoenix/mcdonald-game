@@ -11,6 +11,7 @@ class Character(Entity):
         Entity.__init__(self)
         self.xvel = 0
         self.yvel = 0
+        self.distancelimitx = self.distancelimity = 10**1000000
         self.onGround = False
         self.image = pygame.image.load(img)
         self.rect = pygame.Rect(x, y, width, height)
@@ -25,12 +26,12 @@ class Character(Entity):
         self.regen = .1
 
     def update(self, platforms):
-        
+    
         if not self.onGround:
             # only accelerate with gravity if in the air
             self.yvel += self.gravity
             # max falling speed
-            if self.yvel > 100: self.yvel = 100
+            #if self.yvel > 100: self.yvel = 100
             
 ##            if self.rect.top >= 100000:
 ##                self.rect.top = -100
@@ -43,14 +44,23 @@ class Character(Entity):
         if abs(self.xvel) < .001:
             self.xvel = 0.0
 
-        if self.health <= 0:
+        if self.health <= 0 or \
+           abs(self.rect.left) >= self.distancelimitx or\
+           abs(self.rect.top ) >= self.distancelimity:
             self.dead = True
+            #print('die!')
 
         if self.xvel != 0.: # only slow down if moving
             self.xvel *= self.friction
             #print ('xvel',self.xvel)
             #self.xvel -= self.xvel*.4
             
+
+
+        platforms = self.getCloseEntities(platforms)
+
+
+
             
         # increment in x direction
         self.rect.left += int(round(self.xvel))
@@ -100,6 +110,27 @@ class Character(Entity):
                 if isinstance(p, DeathBlock):
                     if not self.health == -1:
                         self.dead = True
+                        #print('die0')
+
+                if isinstance(p, ZoomBlock):
+                    #print('to zoom or not to zoom.',self.xvel,self.yvel)
+##                    if (self.rect.left >= p.rect.right and \
+##                        self.xvel > 0) or \
+##                       (self.rect.right <= p.rect.left and \
+##                        self.xvel < 0):
+                    if xvel == 0 and yvel != 0:
+                        
+                        self.xvel *= 10
+                        #print('speed up x. ZOOOOOM')
+                        
+##                    if (self.rect.top >= p.rect.bottom and \
+##                        self.yvel > 0) or \
+##                       (self.rect.bottom <= p.rect.top and \
+##                        self.yvel < 0):
+                    if yvel == 0 and xvel != 0:
+                        
+                        self.yvel *= 10
+                        #print('speed up y. ZOOOOOM')
                 
                 if xvel > 0:
                     self.rect.right = p.rect.left
@@ -116,6 +147,26 @@ class Character(Entity):
                     self.rect.top = p.rect.bottom
 
 
+    def getCloseEntities(self, platforms):
+        closeplatforms = []
+        for p in platforms:
+            px = p.rect.centerx
+            py = p.rect.centery
+            sx = self.rect.centerx
+            sy = self.rect.centery
+
+##            if abs(px-sx) <= abs(self.xvel*2) and \
+##               abs(py-sy) <= abs(self.yvel*2):
+            if abs(px-sx) <= abs(self.xvel)+100 and abs(py-sy) <= abs(self.yvel)+100:
+                closeplatforms.append(p)
+##                if isinstance(self, Player):
+##                    print((self.xvel + self.yvel)*10)
+##                    print(((px-sx)**2+(py-sy)**2)**.5)
+##            print(((px-sx)**2+(py-sy)**2)**.5)
+
+        return closeplatforms
+
+
 class Player(Character):
     def __init__(self, x, y):
         Character.__init__(self, x, y, 32, 32, 'pictures/playerTest.gif')
@@ -125,9 +176,12 @@ class Player(Character):
         self.speed = 4
         self.jetpack = False
         self.friction = .7
-        self.running_speed = 11
-        self.walking_speed = 7
-        self.sneaking_speed= 1
+        self.running_speed = 3.3#11#7.7
+        self.walking_speed = 2.1#7#4.9
+        self.sneaking_speed= .4#1#0.7
+        self.continuousshoot = None
+        self.shoottimer = 0
+        self.shootrate = 5
 
     def update(self, up, down, left, right, running, sneaking,
                platforms, entities):
@@ -160,7 +214,7 @@ class Player(Character):
             self.speed = self.walking_speed
         if left:
             if not self.jetpack:
-                self.xvel = -self.speed
+                self.xvel -= self.speed
             else:
                 self.xvel -= 2
                 lazer = normal_lazer(self.rect.right,
@@ -170,7 +224,7 @@ class Player(Character):
                 lazer.shooter = self
         if right:
             if not self.jetpack:
-                self.xvel = +self.speed
+                self.xvel += self.speed
             else:
                 self.xvel += 2
                 lazer = normal_lazer(self.rect.left,
@@ -178,6 +232,20 @@ class Player(Character):
                                      (-1,0))
                 entities.add(lazer)
                 lazer.shooter = self
+
+
+        if self.continuousshoot != None:
+
+            if self.shoottimer <= 0:
+                self.shoottimer = self.shootrate
+                
+                lazer = self.continuousshoot(self.rect.left+16,
+                                             self.rect.top+16)
+                entities.add(lazer)
+                lazer.shooter = self
+
+            elif self.shoottimer > 0:
+                self.shoottimer -= 1
 
         Character.update(self, platforms)
 
@@ -192,6 +260,7 @@ class Enemy(Character):
         self.spawn = (x, y)
         self.timer = 1000
         self.max_timer = 1000
+        self.respawn = True
         
         
     def update(self, player, platforms, entities):
@@ -281,7 +350,9 @@ class Enemy(Character):
         if pygame.sprite.collide_rect(self, player):
 
             if not player.dead:
-                if player.health != -1: player.health -= self.power
+                if player.health != -1:
+                    player.health -= self.power
+                    player.health = max((player.health, 0))
                 if player.health == 0: player.dead = True
             else:
                 player.dead = True
@@ -529,16 +600,102 @@ class MachineGunDrone(HamburgurDrone):
         Character.update(self, platforms)
 
 
+
+
+
+
+class BlockHider(HamburgurDrone):
+    def __init__(self, x, y):
+        HamburgurDrone.__init__(self, x, y)
+        self.image = pygame.image.load('pictures/BlockTest0.gif')
+        self.health = 100
+    def update(self, platforms, entities):
+        #print(self.dead)
+        if len(self.targets) > 0:
+            target = self.targets[0]
+            
+            if target.dead == True:
+                self.targets.remove(target)
+                return
+        else:
+            target = None
+
+        
+        if target == None:
+            if self.health >= 100:
+                self.xvel += random.randint(-1,1)
+                self.yvel += random.randint(-1,1)
+            elif self.health < 100:
+                self.xvel += random.randint(-1,1)*80/self.health
+                self.yvel += random.randint(-1,1)
+            Character.update(self, platforms)
+            return
+        
+        if   target.rect.x > self.rect.x:
+            self.xvel += self.speed
+
+        elif target.rect.x < self.rect.x:
+            self.xvel -= self.speed
+            
+        if target.rect.bottom <= self.rect.y:
+            self.yvel -= self.speed*3
+
+
+        for i in range(6):
+
+            
+
+            Tx = target.rect.left + 16 + random.randint(-20,20)
+            Ty = target.rect.top  + 16 + random.randint(-20,20)
+            Sx = self.rect.left   + 16
+            Sy = self.rect.top    + 16
+            deltaX = Tx - Sx
+            deltaY = Ty - Sy
+
+            denom = (deltaX**2 + deltaY**2)**.5
+            time = denom/16
+            yvel_lazer = (deltaY - 1/2*Master_Lazer.gravity * time**2)
+            if denom == 0: denom = 1
+            deltaX /= denom
+            if time == 0: time = 1
+            yvel_lazer /= time
+
+            #print(deltaX*100, deltaY)
+
+            direction = (deltaX,
+                         yvel_lazer/16)
+            #direction = (deltaX, yvel_lazer/16)
+
+            lazer = WaterLazer(Sx, Sy, direction)
+
+            entities.add(lazer)
+            lazer.shooter = self
+
+            #print(lazer.xvel)
+
+        #print(self.dead)
+        Character.update(self, platforms)
+        #print(self.dead)
+
+
+
+
+
+
+
+
 class Master_Lazer(Entity):
     List = []
     gravity = 1.1
     friction = 1
+    MaxLen = 100
+    ReflectChance = 4
     
     @staticmethod
     def update(Entities):
 
-        if len(Master_Lazer.List) > 40:
-            for lazer in Master_Lazer.List[:-20]:
+        if len(Master_Lazer.List) > Master_Lazer.MaxLen:
+            for lazer in Master_Lazer.List[:-Master_Lazer.MaxLen]:
                 lazer.destroyed = True
 
         for lazer in Master_Lazer.List:
@@ -587,8 +744,8 @@ class normal_lazer(Master_Lazer):
         self.yvel *= Master_Lazer.friction
         
         
-        self.rect.left += self.xvel
-        self.rect.top  += self.yvel
+        self.rect.left += round(self.xvel)
+        self.rect.top  += round(self.yvel)
 
         self.collision(Entities)
 ##        current_tar = 0
@@ -611,7 +768,7 @@ class normal_lazer(Master_Lazer):
                 if isinstance(e, BounceBlock):
                     self.xvel *= -1
                     self.yvel *= -1
-                    if random.randint(0, 4) == 0:
+                    if random.randint(0, Master_Lazer.ReflectChance) == 0:
                         self.destroyed = True
 
                 elif isinstance(e, DeathBlock):
@@ -644,6 +801,7 @@ class normal_lazer(Master_Lazer):
 
                             e. health -= self.damage
                             if e.health <= 0:
+                                e.health = 0
                                 Entities.remove(e)
 
                     return
@@ -652,35 +810,48 @@ class normal_lazer(Master_Lazer):
 class heat_seaking_lazer(normal_lazer):
     def __init__(self, x, y, direction=(1,0)):
         normal_lazer.__init__(self, x, y, direction)
+        self.targets = []
         self.speed = 1
-        self.damage = 25
+        self.damage = 10
+        self.movetimer = 6
+        self.moverate = 1
         self.dissipation = 0
 
     def update(self, Entities):
 
         normal_lazer.update(self, Entities)
-        if len(self.targets) == 0: return
+        if len(self.targets) == 0:
+            #print('sigh')
+            return
 
-        distances = [0 for i in range(len(self.targets))]
-        
-        for index in range(len(self.targets)):
-            target = self.targets[index]
-            x1 = self.rect.center[0]; x2 = target.rect.center[0]
-            y1 = self.rect.center[1]; y2 = target.rect.center[1]
+        if self.targets[0].dead == True:
+            self.targets.pop(0)
+            return
+
+        if self.movetimer > 0: self.movetimer -= 1
+
+        if self.movetimer <= 0:
+            self.movetimer = self.moverate
+
+            Ex = self.targets[0].rect.centerx
+            Ey = self.targets[0].rect.centery
+            Sx = self.rect.centerx
+            Sy = self.rect.centery
+            deltaX = Ex - Sx
+            deltaY = Ey - Sy
             
-            distances[index] = ( (x1-x2)**2 + (y1-y2)**2 ) **.5
-            #print(x1-x2)
+            denom = (deltaX**2 + deltaY**2)**.5
+            if denom == 0: denom = 0.000000000001
+            deltaX /= denom
+    ##                deltaY /= denom
+            time = denom/16#lazer.speed
+            yvel = (deltaY - 1/2*Master_Lazer.gravity * time**2)/time
 
-        target = self.targets[distances.index(min(distances))]
-
-        if self.rect.left >= target.rect.right:
-            self.direction = (-1, self.direction[1])
-        if self.rect.right <= target.rect.left:
-            self.direction = (+1, self.direction[1])
-        if self.rect.top >= target.rect.bottom:
-            self.direction = (self.direction[0], -1)
-        if self.rect.bottom <= target.rect.top:
-            self.direction = (self.direction[0], +1)
+            self.direction = (deltaX, yvel/16)#lazer.speed)
+            self.xvel = self.direction[0]*self.speed
+            self.yvel = self.direction[1]*self.speed
+            #print(self.xvel)
+            #print(self.direction)
 
 
 
@@ -721,6 +892,7 @@ class super_lazer(normal_lazer):
 
                             e.health -= self.damage
                             if e.health <= 0:
+                                e.health = 0
                                 e.dead = True
 
                     return
@@ -730,8 +902,8 @@ class floor_destroying_lazer(normal_lazer):
     def __init__(self, x, y):
         super_lazer.__init__(self, x, y, (0, 1))
         
-    def draw(self, Entities):
-        super_lazer.draw(self, Entities)
+    def collision(self, Entities):
+        super_lazer.collision(self, Entities)
 
 class bomb_lazer(normal_lazer):
     def __init__(self, x, y, direction=(0,0)):
@@ -744,7 +916,7 @@ class bomb_lazer(normal_lazer):
         self.dissipation = 0
         self.img_index = 0
         self.exploding = False
-        self.explosionradius = 128
+        self.explosionradius = 32
         self.destroyblocks = False
     def update(self, Entities):
         #print(self.shooter)
@@ -770,7 +942,7 @@ class bomb_lazer(normal_lazer):
                 if isinstance(e, BounceBlock):
                     if self.xvel != 0: self.xvel *= -1
                     if self.yvel != 0: self.yvel *= -1
-                    if random.randint(0, 4) == 0:
+                    if random.randint(0, Master_Lazer.ReflectChance) == 0:
                         self.destroyed = True
 
                 elif isinstance(e, DeathBlock):
@@ -800,13 +972,22 @@ class bomb_lazer(normal_lazer):
                ((self.rect.left-e.rect.left)**2+\
                 (self.rect.top-e.rect.top)**2)**.5\
                 < self.explosionradius:
-                if isinstance(e, Character):
+                
+                if isinstance(e, DeathBlock) or \
+                   isinstance(e, IndestructibleBlock) or \
+                   isinstance(e, ExitBlock):
+                    
+                    self.destroyed = True
+                    continue
+                
+                elif isinstance(e, Character):
                     #print(e, self.shooter, e == self.shooter)
                     if e.health == -1:
                         continue
 
                     e. health -= self.damage
                     if e.health <= 0:
+                        e.health = 0
                         Entities.remove(e)
                         
                 elif isinstance(e, Platform):
@@ -818,6 +999,69 @@ class bomb_lazer(normal_lazer):
                     
                 elif isinstance(e, normal_lazer):
                     e.destroyed = True
+
+
+
+
+class WaterLazer(normal_lazer):
+    def __init__(self, x, y, direction=(1,0)):
+        normal_lazer.__init__(self, x, y, direction)
+        width = 20; height = 20
+        self.image = pygame.Surface((width, height))
+        self.image.convert()
+        self.image.fill(pygame.Color("#ff000000"))
+        self.speed = 1
+        self.damage = .5
+        self.dissipation = 0
+
+
+    def collision(self, Entities):
+
+        for e in Entities:
+            
+            if pygame.sprite.collide_rect(self, e):
+
+                if isinstance(e, BounceBlock):
+                    self.xvel *= -1
+                    self.yvel *= -1
+                    if random.randint(0, Master_Lazer.ReflectChance) == 0:
+                        self.destroyed = True
+
+                elif isinstance(e, DeathBlock):
+                    self.destroyed = True
+
+                elif e != self.shooter and not e == self:
+                    #print(e, self.shooter)
+                    if not (isinstance(e, ContainmentBlock) or \
+                       isinstance(e, HealthBar)):
+                        self.destroyed = True
+##                    Master_Lazer.List.remove(self)
+##                    Entities.remove(self)
+
+##                    for target in self.targets:
+##
+##                        if e == target:
+                    if isinstance(e, bomb_lazer):
+                        self.destroyed = True
+                        e.exploding = True
+                        e.img_index += 1
+                    elif isinstance(e, super_lazer):
+                        self.destroyed = True
+                    elif isinstance(e, normal_lazer) and not \
+                         isinstance(e, WaterLazer):
+                        self.destroyed = True
+                        e.destroyed = True
+                        
+                    if isinstance(e, Character):
+                            if e.health == -1:
+                                continue
+
+                            e. health -= self.damage
+                            if e.health <= 0:
+                                e.health = 0
+                                Entities.remove(e)
+
+                    return
 
                     
     
@@ -911,4 +1155,68 @@ class LetterBlock(Platform):
         self.image = font.render(letter,
                                  False, (100, 100, 100))
         
+class SpawnerBlock(Platform):
+    pass
+
+class DistanceSpawnerBlock(SpawnerBlock):
+    def __init__(self,x,y,entities,target):
+        self.entities = entities
+        Platform.__init__(self,x,y)
+        self.target = target
+        self.range = 100
+    def update(self):
+        deltaX = self.target.rect.x - self.rect.x
+        deltaY = self.target.rect.y - self.rect.y
+            
+        denom = (deltaX**2 + deltaY**2)**.5
+        if denom <= self.range: self.destroyed = True
+
+
+class ZoomBlock(Platform):
+    pass
+
+class ShooterBlock(Platform):
+    def __init__(self,x,y,entities):
+        self.entities = entities
+        Platform.__init__(self,x,y)
+    def update(self):
+        shoot = random.randint(0,10)
+        if shoot == 0:
+            ##directions = ((1,0),(-1,0),(0,1),(0,-1),(1,1),(0,0),(-1,1),(1,-1))
+            directions = ((0,-1),)
+            lazer = normal_lazer(self.rect.left, self.rect.top,
+                                 directions[random.randint(0,len(directions)-1)])
+            lazer.shooter = self
+            self.entities.add(lazer)
+
+
+class BetterShooterBlock(Platform):
+    def __init__(self,x,y,entities,target):
+        self.entities = entities
+        Platform.__init__(self,x,y)
+        self.target = target
+        self.range = 200
+    def update(self):
+        shoot = random.randint(0,20)
+        if shoot == 0:
+        
+            deltaX = self.target.rect.x - self.rect.x
+            deltaY = self.target.rect.y - self.rect.y
+                
+            denom = (deltaX**2 + deltaY**2)**.5
+            if denom >= self.range: return
+            deltaX /= denom
+##                deltaY /= denom
+            time = denom/16#lazer.speed
+            yvel = (deltaY - 1/2*Master_Lazer.gravity * time**2)/time
+
+            direction = (deltaX, yvel/16)#lazer.speed)
+            
+            lazer = normal_lazer(self.rect.left, self.rect.top,
+                                 direction
+                                 )
+            lazer.shooter = self
+            lazer.damage = 6
+            lazer.dissipation = 0.5
+            self.entities.add(lazer)
 

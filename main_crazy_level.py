@@ -7,7 +7,7 @@ HALF_WIDTH = int(WIN_WIDTH / 2)
 HALF_HEIGHT = int(WIN_HEIGHT / 2)
 
 DISPLAY = (WIN_WIDTH, WIN_HEIGHT)
-DEPTH = 32 
+DEPTH = 32
 FLAGS = 0
 CAMERA_SLACK = 30
 
@@ -47,93 +47,88 @@ def main(leveltoplay=0):
 ##        cl += 1
 
     leveltoplay %= number_of_levels
-    l = open('levels/level%s.txt' %(str(leveltoplay+1))); mode = 0
-    #l = open('super_hard_levels/level%s.txt' %(str(leveltoplay+1))); mode = 1
+    #l = open('levels/level%s.txt' %(str(leveltoplay+1))); mode = 0
+    l = open('super_hard_levels/level%s.txt' %(str(leveltoplay+1))); mode = 1
     level = eval(l.read())
     l.close()
     #level = levels[leveltoplay]
     # build the level
+##    different_types_of_stuff = ('P','E','T','M','D','C','W','Z','S','H','B',
+##                                'M','G')
+    different_types_of_stuff = ('P','E','T','M','D','C','W','Z','S','H','B',
+                                'M','G')
+                             
     enemyspeed = 3
     mustdestroy = []
     for row in level:
         for col in row:
-            if col == "P":
+            if col != ' ':
+                char = different_types_of_stuff[random.randint(
+                                            0,len(different_types_of_stuff)-1)]
+            if char == "P":
                 p = Platform(x, y)
                 platforms.append(p)
                 entities.add(p)
-            if col == "E":
+            if char == "E":
                 e = ExitBlock(x, y)
                 platforms.append(e)
                 entities.add(e)
-            if col == 'T':
+            if char == 'T':
                 t = BounceBlock(x, y, .5)
                 platforms.append(t)
                 entities.add(t)
-            if col == 'M':
+            if char == 'M':
                 m = BigLogo(x, y)
                 platforms.append(m)
                 entities.add(m)
-                if mode == 0 and leveltoplay == 4: mustdestroy.append(m)
-            if col == 'D':
+                mustdestroy.append(m)
+            if char == 'D':
                 d = DeathBlock(x, y)
                 platforms.append(d)
                 entities.add(d)
-            if col == 'C':
+            if char == 'C':
                 c = ContainmentBlock(x, y)
                 platforms.append(c)
                 entities.add(c)
-                if mode == 1 and leveltoplay == 6: mustdestroy.append(c)
-            if col == 'W':
+            if char == 'W':
                 b = SpawnerBlock(x, y)
                 platforms.append(b)
                 entities.add(b)
-            if col == 'Z':
+            if char == 'Z':
                 z = ZoomBlock(x, y)
                 platforms.append(z)
                 entities.add(z)
-            if col == 'O':
-                s = ShooterBlock(x,y,entities)
-                platforms.append(s)
-                entities.add(s)
-            if col == 'V':
-                s = BetterShooterBlock(x,y,entities,player)
-                platforms.append(s)
-                entities.add(s)
-            if col == 'I':
-                s = DistanceSpawnerBlock(x,y,entities,player)
-                platforms.append(s)
-                entities.add(s)
-            if col == 'S':
+            if char == 'S':
                 s = Enemy(x, y)
                 s.speed = enemyspeed; enemyspeed += 1
                 entities.add(s)
                 enemies.append(s)
                 healthbars.append(s.healthbar)
-            if col == 'H':
+            if char == 'H':
                 h = HamburgurDrone(x, y)
                 h.targets.append(player)
                 entities.add(h)
                 drones.append(h)
                 healthbars.append(h.healthbar)
-            if col == 'B':
+            if char == 'B':
                 b = TomatobombDrone(x, y)
                 b.targets.append(player)
                 entities.add(b)
                 drones.append(b)
                 healthbars.append(b.healthbar)
-            if col == 'N':
+            if char == 'N':
                 n = SniperDrone(x, y)
                 n.targets.append(player)
                 entities.add(n)
                 drones.append(n)
                 healthbars.append(n.healthbar)
-            if col == 'G':
+            if char == 'G':
                 g = MachineGunDrone(x, y)
                 g.targets.append(player)
                 entities.add(g)
                 drones.append(g)
                 healthbars.append(g.healthbar)
-            if col == '*':
+            if char == '*':
                 playerstartL = x
                 playerstartT = y
                 
@@ -143,7 +138,7 @@ def main(leveltoplay=0):
 
 
 
-    lazer_types = (heat_seaking_lazer,
+    lazer_types = (#heat_seaking_lazer,
                    normal_lazer, normal_lazer, normal_lazer, normal_lazer,
                    normal_lazer,
                    )
@@ -152,16 +147,15 @@ def main(leveltoplay=0):
     player.rect.left = playerstartL
     player.rect.top  = playerstartT
     camera_to_use = complex_camera
-    borderlimit   = False
 
 
     if mode == 0:
 
         if leveltoplay == 0:
-            player.distancelimity = 1000
+            pass
 
         elif leveltoplay == 1:
-            player.distancelimity = 1000
+            pass
 
         elif leveltoplay == 2:
             pass#camera_to_use = simple_camera
@@ -217,59 +211,12 @@ def main(leveltoplay=0):
             pass
 
         if leveltoplay == 1:
-            player.distancelimity = 1000
-
-        if leveltoplay == 2:
-            pass
-
-        if leveltoplay == 3:
-            Master_Lazer.ReflectChance = 100
-
-        if leveltoplay == 4:
-            player.distancelimity = 96
-            camera_to_use = simple_camera
-
-        if leveltoplay == 5:
-            #lazer_types = (super_lazer,)
-            player.distancelimity = 2170
-            player.continuousshoot = floor_destroying_lazer
-            borderlimit = True
-
-        if leveltoplay == 6:
-            lazer_types = (super_lazer,)
-            player.jetpack = False#True
-            player.distancelimitx = 2816
-            player.distancelimity = 2976
-
-            bomb_positions = ((2528,32),(1280,64),(384,160),(2432,320),
-                              (1024,352),(1472,416),(1504,416),(320,512),
-                              (1984,608),(64,800),(2048,864),(832,992),
-                              (11568,1248),(2432,1344),(192,1376),(960,1440),
-                              (1568,1248))
-
-            for i in range(len(bomb_positions)):
-                b = bomb_lazer(bomb_positions[i][0], bomb_positions[i][1])
-                entities.add(b)
-                b.shooter = player
-                b.explosionradius = 500
-                b.destroyblocks = True
-                b.damage = 0
-            
-
-        if leveltoplay == 7:
-            pass
-
-        if leveltoplay == 8:
-            pass
-
-        if leveltoplay == 9:
             pass
 
 
     total_level_width  = len(level[0])*32
     total_level_height = len(level)*32
     camera = Camera(camera_to_use, total_level_width, total_level_height)
-    camera.borderlimit = borderlimit
     entities.add(player)
     healthbars.append(player.healthbar)
 
@@ -396,14 +343,13 @@ def main(leveltoplay=0):
                                          direction)
                 entities.add(lazer)
                 lazer.shooter = player
-                lazer.targets = drones + enemies
 
 
         if paused:
 
             for e in entities:
-                #if camera.onscreen(e):
-                screen.blit(e.image, camera.apply(e))
+                if camera.onscreen(e):
+                    screen.blit(e.image, camera.apply(e))
 
             pygame.display.flip()
         
@@ -424,12 +370,12 @@ def main(leveltoplay=0):
         Master_Lazer.update(entities)
 
         for e in entities:
-            #if camera.onscreen(e):
-            screen.blit(e.image, camera.apply(e))
+            if camera.onscreen(e):
+                screen.blit(e.image, camera.apply(e))
 
         for h in healthbars:
-            #if camera.onscreen(h):
-            screen.blit(h.image, camera.apply(h))
+            if camera.onscreen(h):
+                screen.blit(h.image, camera.apply(h))
         
         current_enemy = 0
         while current_enemy < len(enemies):
@@ -467,7 +413,6 @@ def main(leveltoplay=0):
                 entities.remove(platform)
                 platforms.remove(platform)
             else:
-                platform.update()
                 current_platform += 1
 
         current_must = 0
@@ -508,7 +453,7 @@ def main(leveltoplay=0):
 
         
 
-        if (leveltoplay == 4 and mode == 0) or (leveltoplay == 6 and mode == 1):
+        if leveltoplay == 4:
             if mustdestroy == []:
                 player.done = True
         
@@ -521,13 +466,8 @@ class Camera(object):
     def __init__(self, camera_func, width, height):
         self.camera_func = camera_func
         self.state = pygame.Rect(0, 0, width, height)
-        self.borderlimit = False
 
     def apply(self, target):
-        if self.borderlimit and isinstance(target, Character):
-            if not self.onscreen(target):
-                target.dead = True
-                #print('kill!')
         return target.rect.move(self.state.topleft)
 
     def update(self, target):
@@ -536,15 +476,14 @@ class Camera(object):
     def onscreen(self, target):
         sl = self.state.left
         st = self.state.top
-        sw = WIN_WIDTH
-        sh = WIN_HEIGHT
+        sw = self.state.width
+        sh = self.state.height
         self.rect = pygame.Rect(-sl, -st, sw, sh)
         if pygame.sprite.collide_rect(self, target):
-            #print('return True')
             return True
         else:
             #print('return False')
-            return False
+            return True#False
 
 def simple_camera(camera, target_rect):
     l, t, _, _ = target_rect
@@ -566,7 +505,7 @@ def complex_camera(camera, target_rect):
 
 
 if __name__ == '__main__':
-    currentnum = 0
+    currentnum = 1
     while 1:
         won = main(currentnum)
         if won:
